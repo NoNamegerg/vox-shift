@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vox Shift</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span>Vox Shift</span>
+        </div>
+        <div class="status" id="status">
+          <span class="status-dot"></span>
+          <span id="statusText">Готов</span>
+        </div>
+      </header>
+
+      <main>
+        <aside class="sidebar">
+          <section>
+            <label class="section-label" for="inputDevice">Микрофон</label>
+            <select id="inputDevice"></select>
+          </section>
+
+          <section>
+            <label class="section-label" for="outputDevice">Устройство вывода</label>
+            <select id="outputDevice"></select>
+          </section>
+
+          <section class="level-section">
+            <div class="section-heading">
+              <label class="section-label">Уровень входа</label>
+              <span id="dbLevel">-60 dB</span>
+            </div>
+            <div class="level-track"><div class="level-fill" id="levelFill"></div></div>
+          </section>
+
+          <button class="power-button" id="powerButton">
+            <span id="powerLabel">Включить голос</span>
+          </button>
+        </aside>
+
+        <section class="workspace">
+          <div class="workspace-head">
+            <div>
+              <p class="eyebrow">Voice library</p>
+              <h1>Выберите голос</h1>
+            </div>
+            <button class="reset-button" id="resetButton">Сбросить</button>
+          </div>
+
+          <div class="voice-grid" id="voiceGrid"></div>
+
+          <div class="controls">
+            <div class="control">
+              <div class="control-heading">
+                <div>
+                  <span class="control-name">Pitch</span>
+                  <span class="control-description">Высота голоса</span>
+                </div>
+                <output id="pitchValue">0</output>
+              </div>
+              <input id="pitch" type="range" min="-12" max="12" value="0" step="1" />
+            </div>
+
+            <div class="control">
+              <div class="control-heading">
+                <div>
+                  <span class="control-name">Formant</span>
+                  <span class="control-description">Окраска и размер</span>
+                </div>
+                <output id="formantValue">0</output>
+              </div>
+              <input id="formant" type="range" min="-12" max="12" value="0" step="1" />
+            </div>
+
+            <div class="control">
+              <div class="control-heading">
+                <div>
+                  <span class="control-name">Robot</span>
+                  <span class="control-description">Синтез искажения</span>
+                </div>
+                <output id="robotValue">0%</output>
+              </div>
+              <input id="robot" type="range" min="0" max="100" value="0" step="1" />
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
