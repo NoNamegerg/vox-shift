@@ -1,0 +1,23 @@
+node_modules/
+
+# Electron runtime copied locally to run the portable executable
+VoxShift.exe
+chrome_100_percent.pak
+chrome_200_percent.pak
+d3dcompiler_47.dll
+dxcompiler.dll
+dxil.dll
+ffmpeg.dll
+icudtl.dat
+libEGL.dll
+libGLESv2.dll
+LICENSES.chromium.html
+locales/
+resources.pak
+resources/
+snapshot_blob.bin
+v8_context_snapshot.bin
+version
+vk_swiftshader.dll
+vk_swiftshader_icd.json
+vulkan-1.dll
