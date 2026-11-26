@@ -88,6 +88,26 @@
               <input id="robot" type="range" min="0" max="100" value="0" step="1" />
             </div>
           </div>
+
+          <section class="soundboard">
+            <div class="soundboard-heading">
+              <div>
+                <p class="eyebrow">Soundboard</p>
+                <h2>Саундпад</h2>
+              </div>
+              <div class="soundboard-actions">
+                <button class="text-button" id="stopSoundsButton" type="button">Остановить все</button>
+                <button class="add-button" id="addSoundsButton" type="button">Добавить звуки</button>
+              </div>
+            </div>
+            <div class="soundboard-volume">
+              <label for="soundVolume">Громкость звуков</label>
+              <input id="soundVolume" type="range" min="0" max="100" value="80" />
+              <output id="soundVolumeValue">80%</output>
+            </div>
+            <div class="sound-grid" id="soundGrid"></div>
+            <p class="soundboard-message" id="soundboardMessage">Добавь аудиофайлы, чтобы они появились здесь.</p>
+          </section>
         </section>
       </main>
     </div>

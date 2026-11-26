@@ -25,6 +25,10 @@ const state = {
   filters: [],
   animation: null,
   activeVoice: voices[0],
+  soundClips: [],
+  soundBuffers: new Map(),
+  soundSources: new Map(),
+  soundContext: null,
   running: false
 };
 
@@ -44,7 +48,13 @@ const els = {
   pitchValue: document.querySelector('#pitchValue'),
   formantValue: document.querySelector('#formantValue'),
   robotValue: document.querySelector('#robotValue'),
-  reset: document.querySelector('#resetButton')
+  reset: document.querySelector('#resetButton'),
+  soundGrid: document.querySelector('#soundGrid'),
+  addSounds: document.querySelector('#addSoundsButton'),
+  stopSounds: document.querySelector('#stopSoundsButton'),
+  soundVolume: document.querySelector('#soundVolume'),
+  soundVolumeValue: document.querySelector('#soundVolumeValue'),
+  soundboardMessage: document.querySelector('#soundboardMessage')
 };
 
 function renderVoices() {
@@ -211,14 +221,136 @@ async function startVoice() {
 async function configureOutput(context) {
   const destination = els.output.value;
   if (destination && context.setSinkId) {
-    try {
-      await context.setSinkId(destination);
-    } catch (_) {
-      // Output sink switching is optional in Electron/WebView versions.
-    }
+    await context.setSinkId(destination);
   }
   await context.resume();
-  state.gain.connect(context.destination);
+  if (state.gain && context === state.context) state.gain.connect(context.destination);
+}
+
+async function getSoundContext() {
+  if (!state.soundContext || state.soundContext.state === 'closed') {
+    state.soundContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  await configureOutput(state.soundContext);
+  return state.soundContext;
+}
+
+function renderSoundboard() {
+  els.soundGrid.replaceChildren();
+  for (const clip of state.soundClips) {
+    const card = document.createElement('div');
+    card.className = `sound-card${state.soundSources.has(clip.id) ? ' playing' : ''}`;
+    card.dataset.id = clip.id;
+
+    const play = document.createElement('button');
+    play.type = 'button';
+    play.className = 'sound-play';
+    play.textContent = state.soundSources.has(clip.id) ? 'Ⅱ' : '▶';
+    play.setAttribute('aria-label', `${state.soundSources.has(clip.id) ? 'Остановить' : 'Воспроизвести'} ${clip.name}`);
+    play.addEventListener('click', () => toggleSound(clip));
+
+    const name = document.createElement('span');
+    name.className = 'sound-name';
+    name.textContent = clip.name;
+    name.title = clip.name;
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'sound-remove';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', `Удалить ${clip.name}`);
+    remove.addEventListener('click', () => removeSound(clip));
+
+    card.append(play, name, remove);
+    els.soundGrid.appendChild(card);
+  }
+
+  els.soundboardMessage.textContent = state.soundClips.length
+    ? ''
+    : 'Добавь аудиофайлы, чтобы они появились здесь.';
+}
+
+async function loadSounds() {
+  if (!window.desktop?.listSounds) {
+    els.soundboardMessage.textContent = 'Саундпад доступен в настольной версии приложения.';
+    els.addSounds.disabled = true;
+    return;
+  }
+
+  try {
+    state.soundClips = await window.desktop.listSounds();
+    renderSoundboard();
+  } catch (error) {
+    els.soundboardMessage.textContent = `Не удалось загрузить звуки: ${error.message}`;
+    console.error(error);
+  }
+}
+
+async function addSounds() {
+  try {
+    const clips = await window.desktop.addSounds();
+    if (clips) {
+      state.soundClips = clips;
+      renderSoundboard();
+    }
+  } catch (error) {
+    els.soundboardMessage.textContent = error.message;
+    console.error(error);
+  }
+}
+
+async function toggleSound(clip) {
+  const current = state.soundSources.get(clip.id);
+  if (current) {
+    current.source.stop();
+    return;
+  }
+
+  try {
+    const context = await getSoundContext();
+    let buffer = state.soundBuffers.get(clip.id);
+    if (!buffer) {
+      const encoded = await window.desktop.readSound(clip.id);
+      const binary = atob(encoded);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+      buffer = await context.decodeAudioData(bytes.buffer);
+      state.soundBuffers.set(clip.id, buffer);
+    }
+
+    const source = context.createBufferSource();
+    const volume = context.createGain();
+    source.buffer = buffer;
+    volume.gain.value = Number(els.soundVolume.value) / 100;
+    source.connect(volume);
+    volume.connect(context.destination);
+    source.onended = () => {
+      if (state.soundSources.get(clip.id)?.source === source) {
+        state.soundSources.delete(clip.id);
+        renderSoundboard();
+      }
+    };
+    state.soundSources.set(clip.id, { source, volume });
+    source.start();
+    renderSoundboard();
+  } catch (error) {
+    els.soundboardMessage.textContent = `Не удалось воспроизвести «${clip.name}»: ${error.message}`;
+    console.error(error);
+  }
+}
+
+async function removeSound(clip) {
+  const playback = state.soundSources.get(clip.id);
+  if (playback) playback.source.stop();
+
+  try {
+    state.soundClips = await window.desktop.removeSound(clip.id);
+    state.soundBuffers.delete(clip.id);
+    renderSoundboard();
+  } catch (error) {
+    els.soundboardMessage.textContent = `Не удалось удалить «${clip.name}»: ${error.message}`;
+    console.error(error);
+  }
 }
 
 function applyProcessing() {
@@ -300,15 +432,28 @@ els.input.addEventListener('change', () => {
 });
 
 els.output.addEventListener('change', () => {
-  if (state.running) configureOutput(state.context);
+  if (state.running) configureOutput(state.context).catch(error => console.error(error));
+  if (state.soundContext) configureOutput(state.soundContext).catch(error => console.error(error));
 });
 
 els.reset.addEventListener('click', () => selectVoice(voices[0]));
+els.addSounds.addEventListener('click', addSounds);
+els.stopSounds.addEventListener('click', () => {
+  for (const playback of state.soundSources.values()) playback.source.stop();
+});
+els.soundVolume.addEventListener('input', () => {
+  const volume = Number(els.soundVolume.value) / 100;
+  els.soundVolumeValue.textContent = `${els.soundVolume.value}%`;
+  state.soundSources.forEach(playback => {
+    playback.volume.gain.setTargetAtTime(volume, state.soundContext.currentTime, 0.02);
+  });
+});
 
 navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
 
 renderVoices();
 updateLabels();
+loadSounds();
 navigator.mediaDevices.getUserMedia({ audio: true })
   .then(async stream => {
     stream.getTracks().forEach(track => track.stop());

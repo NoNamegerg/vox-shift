@@ -2,6 +2,7 @@ node_modules/
 
 # Electron runtime copied locally to run the portable executable
 VoxShift.exe
+VoxShift-Windows-x64.zip
 chrome_100_percent.pak
 chrome_200_percent.pak
 d3dcompiler_47.dll
